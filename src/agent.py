@@ -1,11 +1,14 @@
 import os
 import duckdb
+from pathlib import Path
 from dotenv import load_dotenv
 from google import genai
 
 load_dotenv()
 
 client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
+
+DB_PATH = Path(__file__).resolve().parent.parent / "data" / "london_housing.duckdb"
 
 SCHEMA_DESCRIPTION = """
 Table: clean_transactions
@@ -19,10 +22,9 @@ Columns:
 - town, district, county (VARCHAR)
 """
 
-def ask_agent(question: str, db_path: str = "data/london_housing.duckdb") -> str:
-    con = duckdb.connect(db_path)
+def ask_agent(question: str, db_path: str = str(DB_PATH)) -> str:
+    con = duckdb.connect(db_path, read_only=True)
 
-    # Step 1: have the model generate SQL based on the question
     sql_prompt = (
         f"You are a SQL expert. Given this schema:\n{SCHEMA_DESCRIPTION}\n"
         f"Generate ONLY a valid DuckDB SQL query for this question, "
@@ -34,13 +36,11 @@ def ask_agent(question: str, db_path: str = "data/london_housing.duckdb") -> str
     )
     sql_query = sql_response.text.strip().strip("```sql").strip("```").strip()
 
-    # Step 2: actually run the query against your database
     try:
         result = con.sql(sql_query).df()
     except Exception as e:
         return f"Could not run the query: {e}\n\nGenerated SQL: {sql_query}"
 
-    # Step 3: have the model interpret the results in plain language
     interpretation_prompt = (
         f"Question: {question}\nSQL result:\n{result.to_string()}\n\n"
         f"Give a short, clear answer in plain language."
@@ -58,4 +58,3 @@ if __name__ == "__main__":
     print(ask_agent("What is the average selling price in Ealing?"))
     print(ask_agent("Which district has the highest average price?"))
     print(ask_agent("How many new-build properties were sold in Croydon?"))
-    
