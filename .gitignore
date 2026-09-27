@@ -220,3 +220,5 @@ __marimo__/
 data/*.csv
 .venv/
 .env
+
+data/*.duckdb
