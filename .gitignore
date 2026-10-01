@@ -222,3 +222,5 @@ data/*.csv
 .env
 
 data/*.duckdb
+
+data/raw/*.csv
