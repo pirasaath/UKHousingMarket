@@ -7,6 +7,8 @@ interactive Streamlit dashboard.
 
 **Note this is only random 100000 observations. Not complete 5 years. **
 
+Also note that no model evaluation was done as this project is done to show various possibilities. 
+
 ## Setup
 1. `pip install -r requirements.txt`
 2. Place your data file in `data/` (HM Land Registry Price Paid Data, London filter)
