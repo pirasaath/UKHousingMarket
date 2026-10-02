@@ -226,3 +226,4 @@ data/*.duckdb
 data/raw/*.csv
 
 data/processed/*.duckdb
+data/processed/*.duckdb.wal
