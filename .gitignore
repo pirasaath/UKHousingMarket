@@ -224,3 +224,5 @@ data/*.csv
 data/*.duckdb
 
 data/raw/*.csv
+
+data/processed/*.duckdb
