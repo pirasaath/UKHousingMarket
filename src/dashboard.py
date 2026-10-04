@@ -1,8 +1,7 @@
 import streamlit as st
-import duckdb
 import pandas as pd
-from pathlib import Path
 
+from db import get_connection as _connect
 from agent import ask_agent
 from forecast import evaluate_and_forecast_postcode
 
@@ -10,9 +9,6 @@ from forecast import evaluate_and_forecast_postcode
 # ============================================================
 # CONFIGURATION
 # ============================================================
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = BASE_DIR / "data" / "processed" / "uk_housing.duckdb"
 
 NAVY = "#0B1B33"
 BLUE = "#1D4ED8"
@@ -131,10 +127,7 @@ st.markdown(
 
 @st.cache_resource
 def get_connection():
-    return duckdb.connect(
-        str(DB_PATH),
-        read_only=True
-    )
+    return _connect()
 
 
 con = get_connection()

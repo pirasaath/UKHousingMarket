@@ -1,15 +1,12 @@
 import os
-import duckdb
-from pathlib import Path
 from dotenv import load_dotenv
 from google import genai
+
+from db import get_connection
 
 load_dotenv()
 
 client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = BASE_DIR / "data" / "processed" / "uk_housing.duckdb"
 
 SCHEMA_DESCRIPTION = """
 Database Engine: DuckDB
@@ -40,8 +37,8 @@ Key Guidelines for SQL generation:
 - For quarterly trends, use date_trunc('quarter', date_transfer).
 """
 
-def ask_agent(question: str, db_path: str = str(DB_PATH)) -> str:
-    con = duckdb.connect(str(db_path), read_only=True)
+def ask_agent(question: str) -> str:
+    con = get_connection()
 
     sql_prompt = (
         f"You are a DuckDB SQL expert. Given this database schema:\n{SCHEMA_DESCRIPTION}\n\n"
@@ -56,6 +53,10 @@ def ask_agent(question: str, db_path: str = str(DB_PATH)) -> str:
             contents=sql_prompt
         )
         sql_query = sql_response.text.strip().replace("```sql", "").replace("```", "").strip()
+
+        # Safety: only allow read-only queries from LLM-generated SQL
+        if not sql_query.lstrip().upper().startswith(("SELECT", "WITH")):
+            raise ValueError("Only SELECT queries are allowed.")
 
         result = con.sql(sql_query).df()
     except Exception as e:

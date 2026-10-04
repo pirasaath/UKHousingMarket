@@ -1,20 +1,8 @@
-import duckdb
 import numpy as np
 import pandas as pd
-from pathlib import Path
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
-# ============================================================
-# CONFIGURATION
-# ============================================================
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = BASE_DIR / "data" / "processed" / "uk_housing.duckdb"
-
-
-def get_connection():
-    return duckdb.connect(str(DB_PATH), read_only=True)
-
+from db import get_connection
 
 # ============================================================
 # FORECAST FUNCTION
