@@ -1,80 +1,128 @@
 import duckdb
-import pandas as pd
 import numpy as np
+import pandas as pd
 from pathlib import Path
-from sklearn.linear_model import LinearRegression
-from statsmodels.tsa.arima.model import ARIMA
-import warnings
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = BASE_DIR / "data" / "london_housing.duckdb"
+DB_PATH = BASE_DIR / "data" / "processed" / "uk_housing.duckdb"
 
 
-def forecast_district(district: str, db_path: str = str(DB_PATH)):
-    con = duckdb.connect(db_path, read_only=True)
+def get_connection():
+    return duckdb.connect(str(DB_PATH), read_only=True)
 
-    df = con.sql(f"""
+
+# ============================================================
+# FORECAST FUNCTION
+# ============================================================
+
+def evaluate_and_forecast_postcode(
+    postcode_district=None,
+    district=None,
+    prop_type=None,
+    new_build=None,
+    duration=None,
+    ppd_category=None,
+    min_year=2020,
+    max_year=2026,
+    test_quarters=4,
+    forecast_quarters=4,
+):
+    con = get_connection()
+
+    # Build query conditions dynamically
+    conditions = ["EXTRACT(YEAR FROM date_transfer) BETWEEN ? AND ?"]
+    params = [min_year, max_year]
+
+    if postcode_district is not None:
+        conditions.append("postcode_district = ?")
+        params.append(postcode_district)
+
+    if district is not None:
+        conditions.append("district = ?")
+        params.append(district)
+
+    if prop_type is not None:
+        conditions.append("property_type = ?")
+        params.append(prop_type)
+
+    if new_build is not None:
+        conditions.append("new_build = ?")
+        params.append(new_build)
+
+    if duration is not None:
+        conditions.append("duration = ?")
+        params.append(duration)
+
+    if ppd_category is not None:
+        conditions.append("ppd_category = ?")
+        params.append(ppd_category)
+
+    where_clause = " AND ".join(conditions)
+
+    query = f"""
         SELECT
             date_trunc('quarter', date_transfer) AS quarter,
-            AVG(price) AS avg_price
-        FROM clean_transactions
-        WHERE district = '{district}'
+            MEDIAN(price) AS price
+        FROM clean_price_paid
+        WHERE {where_clause}
         GROUP BY quarter
         ORDER BY quarter
-    """).df()
-    con.close()
+    """
 
-    if len(df) < 4:
-        return None, None
+    df = con.execute(query, params).df()
 
-    df["period"] = range(len(df))
-    X = df[["period"]]
-    y = df["avg_price"]
+    # Check if there is enough data points to model
+    if len(df) < (test_quarters + 4):
+        return None
 
-    model = LinearRegression()
-    model.fit(X, y)
+    # Ensure regular quarterly frequency
+    df['quarter'] = pd.to_datetime(df['quarter'])
+    df = df.set_index('quarter').asfreq('QS').interpolate().reset_index()
 
-    future_periods = np.array(range(len(df), len(df) + 4)).reshape(-1, 1)
-    predictions = model.predict(future_periods)
+    prices = df['price'].values
+    
+    # Backtesting split
+    train = prices[:-test_quarters]
+    test = prices[-test_quarters:]
 
-    return df, predictions
+    try:
+        # Fit model on training set for backtest evaluation
+        model = ExponentialSmoothing(
+            train, 
+            trend='add', 
+            seasonal=None, 
+            initialization_method='estimated'
+        ).fit()
+        
+        predictions = model.forecast(test_quarters)
+        
+        mape = np.mean(np.abs((test - predictions) / test)) * 100
+        rmse = np.sqrt(np.mean((test - predictions) ** 2))
 
+        # Re-fit on all available historical data for future forecast
+        full_model = ExponentialSmoothing(
+            prices, 
+            trend='add', 
+            seasonal=None, 
+            initialization_method='estimated'
+        ).fit()
+        
+        future_predictions = full_model.forecast(forecast_quarters)
 
-def forecast_district_arima(district: str, db_path: str = str(DB_PATH), periods: int = 4):
-    con = duckdb.connect(db_path, read_only=True)
+    except Exception:
+        # Fallback if optimization fails
+        mape = 0.0
+        rmse = 0.0
+        future_predictions = np.full(forecast_quarters, prices[-1])
 
-    df = con.sql(f"""
-        SELECT
-            date_trunc('quarter', date_transfer) AS quarter,
-            AVG(price) AS avg_price
-        FROM clean_transactions
-        WHERE district = '{district}'
-        GROUP BY quarter
-        ORDER BY quarter
-    """).df()
-    con.close()
-
-    if len(df) < 8:
-        return None, None
-
-    series = df.set_index("quarter")["avg_price"]
-    series.index = pd.DatetimeIndex(series.index).to_period("Q")
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        model = ARIMA(series, order=(1, 1, 1))
-        fitted = model.fit()
-
-    forecast_result = fitted.forecast(steps=periods)
-
-    return df, forecast_result.values
-
-
-if __name__ == "__main__":
-    print("--- Linear regression baseline ---")
-    history, predictions = forecast_district("EALING")
-    print(predictions)
-
-    print("\n--- ARIMA ---")
-    history_arima, predictions_arima = forecast_district_arima("EALING")
-    print(predictions_arima)
+    return {
+        "df": df,
+        "future_predictions": future_predictions,
+        "mape": mape,
+        "rmse": rmse
+    }
