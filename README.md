@@ -1,27 +1,33 @@
-# UK Housing Market Intelligence
+**UK Housing Market Intelligence**
 
-Analysis of HM Land Registry Price Paid Data (Greater London, last 5 years) 
-with a DuckDB processing layer, an AI agent that answers natural-language 
-questions, two forecasting models (Linear Regression & ARIMA), and an 
-interactive Streamlit dashboard.
+An end-to-end data & AI project by PERRA: an interactive dashboard on UK house prices with quarterly price forecasts and a NL AI that answers questions by generating and running SQL on the data.
 
-**Note this is only random 100000 observations. Not complete 5 years. **
+Live demo: https://ukhousingmarket-perra.streamlit.app/
 
-Also note that no model evaluation was done as this project is done to show various possibilities. 
+**Features**
+Market dashboard — filter by district, postcode district, property type, new build, tenure, PPD category and period. KPIs for transactions, latest median/average price and year-on-year growth.
+Trends and breakdowns — quarterly median/average price, transaction volume and a property type breakdown.
+Price forecast — Exponential Smoothing (additive trend) forecast of the median price, with a 4-quarter backtest reporting MAPE and RMSE.
+AI CHATBOT — ask a question in plain English; a Gemini model translates it to DuckDB SQL, the query runs against the data, and the result is summarised in plain language.
 
-## Setup
-1. `pip install -r requirements.txt`
-2. Place your data file in `data/` (HM Land Registry Price Paid Data, London filter)
-3. Add a `.env` file with `GOOGLE_API_KEY=your-key-here`
-4. Run `notebooks/01_explore.ipynb` to build the database
-5. `cd src && streamlit run dashboard.py`
+**Data**
+HM Land Registry Price Paid Data — residential property sales in England & Wales. Prices are filtered to £10k–£10M.
+ONS Postcode Directory (ONSPD) — maps postcodes to local authorities.
 
-## Stack
+The processed database is hosted in MotherDuck as uk_housing and is not stored in this repository because of its size.
+
+**Stack**
 - DuckDB — data storage & querying
 - Google Gemini API — natural language agent
-- scikit-learn / statsmodels — forecasting (Linear Regression, ARIMA)
+- scikit-learn / statsmodels — forecasting
+- Motherduck
+- Python
 - Streamlit — dashboard
 
-## Data source
+**About**
+
+Built by PERRA — DATA & AI CONSULTANCY - BY PERA RAJAHKUMAR.
+
+**Data source**
 Contains HM Land Registry data © Crown copyright and database right 2026. 
 Licensed under the Open Government Licence v3.0.
