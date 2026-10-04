@@ -227,3 +227,5 @@ data/raw/*.csv
 
 data/processed/*.duckdb
 data/processed/*.duckdb.wal
+
+data/raw/epc_backfill_checkpoint.json
