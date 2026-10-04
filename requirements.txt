@@ -5,3 +5,4 @@ numpy
 statsmodels
 google-genai
 plotly
+dotenv
