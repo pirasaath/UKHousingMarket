@@ -3,6 +3,9 @@
 An end-to-end data & AI project by PERRA: an interactive dashboard on UK house prices with quarterly price forecasts and a NL AI that answers questions by generating and running SQL on the data.
 
 Live demo: https://ukhousingmarket-perra.streamlit.app/
+Also see our website: perra.io 
+
+We are specialised in DATA & AI Consultancy.
 
 **Features**
 Market dashboard — filter by district, postcode district, property type, new build, tenure, PPD category and period. KPIs for transactions, latest median/average price and year-on-year growth.
